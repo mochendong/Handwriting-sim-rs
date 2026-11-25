@@ -1,6 +1,13 @@
 # 构建产物
 /target
+/src-tauri/target
+/crates/core/target
 **/*.rs.bk
+
+# 前端（Tauri 2 + Vue，位于仓库根目录）
+/node_modules
+/dist
+/src-tauri/gen
 
 # 本地运行产物（与 Python 版保持一致）
 /output
@@ -23,3 +30,8 @@ Thumbs.db
 
 # 临时
 .staging-rust-new/
+*.pgm
+
+# pdfium 动态库（PDF 底图栅格化运行时依赖，体积大不入库；
+# 本地从 Python 项目 .venv 的 pypdfium2_raw\pdfium.dll 复制，打包脚本负责分发）
+/pdfium.dll

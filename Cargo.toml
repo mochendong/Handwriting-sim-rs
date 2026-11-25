@@ -1,57 +1,37 @@
-[package]
-name = "handwrite-sim"
-version = "0.1.0"
-edition = "2021"
-description = "手写模拟器（Rust 版）- 基于 Slint + 自研笔画扰动引擎的手写体生成工具"
-license = "MIT"
-authors = ["bamboostrip"]
-repository = "https://github.com/bamboostrip/handwrite-sim"
-
-# ---------------------------------------------------------------------------
-# 依赖说明
-# - slint: 桌面 GUI（crates.io 默认 GPLv3；本项目开源，程序整体按 GPLv3 分发）
-# - ab_glyph: 字体光栅化（替代 Python 版 PIL FreeType 黑盒）
-# - image: 图像加载/保存（PNG/webp 背景、导出）
-# - rand/rand_distr: 笔画扰动随机数（正态分布）
-# - serde: 预设 JSON 持久化
-# - rfd: 原生文件对话框（选字体/背景/导出目录）
-# ---------------------------------------------------------------------------
-[dependencies]
-slint = "1"
-ab_glyph = "0.2"
-image = "0.25"
-rand = "0.9"
-rand_distr = "0.5"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-thiserror = "2"
-rfd = "0.15"
-# docx 导入：手写解析（zip + quick-xml），完整对齐 Python 版 docx_io.py 语义，
-# 避免第三方 docx 库读取 API 限制（详见 docs/superpowers/specs 阶段三设计）
-zip = "8"
-quick-xml = "0.41"
-# PDF 导出：位图层方案（MIT；禁用默认 html feature 避开 azul 依赖树）
-printpdf = { version = "0.12", default-features = false, features = ["images"] }
-lopdf = "0.44.0"
-# 预览降采样：SIMD 加速重采样（image::imageops::resize 对千万像素级输入极慢，
-# 32MP 背景 Lanczos3 实测 80s；本库同滤镜毫秒级）。rayon 开启多线程。
-fast_image_resize = { version = "6", features = ["rayon"] }
-
-[build-dependencies]
-# 编译 .slint 界面描述（与 slint 同版本）
-slint-build = "1"
-# Windows exe 资源嵌入（窗口图标，仅 win32 生效）
-winresource = "0.1"
-
-[dev-dependencies]
-tempfile = "3"
-# Slint testing backend（headless）：CI 无显示环境（Linux 无 DISPLAY / macOS headless
-# runner）下创建 MainWindow 时避免 winit 初始化失败。版本需与 slint 严格一致。
-i-slint-backend-testing = "=1.17.1"
+# Tauri 工作区：crates/core 为渲染引擎核心库，src-tauri 为桌面应用壳。
+# 前端（Vue 3）位于仓库根目录，符合 create-tauri-app 标准布局。
+[workspace]
+members = ["crates/core", "src-tauri"]
+resolver = "2"
 
 [profile.release]
-# 越小越快的分发体积（与 Python 版 PyInstaller 产物对比）
 opt-level = 3
-lto = true
+lto = "thin"
 codegen-units = 1
 strip = true
+panic = "abort"
+
+
+[profile.dev]
+debug = 1
+incremental = true
+
+# dev 构建下优化核心渲染路径：debug 未优化时引擎慢 10~30 倍，
+# 预览/导出会卡顿数秒。只优化重计算 crate，编译时间基本不受影响。
+# debug 跟随 [profile.dev]（=1），不要在此重复声明——
+# CI 通过 CARGO_PROFILE_DEV_DEBUG=0 一键关闭全部调试符号。
+[profile.dev.package."handwrite-sim"]
+opt-level = 2
+
+
+[profile.dev.package.ab_glyph]
+opt-level = 2
+
+[profile.dev.package.fast_image_resize]
+opt-level = 3
+
+[profile.dev.package.image]
+opt-level = 2
+
+[profile.dev.package.pdfium-render]
+opt-level = 2
